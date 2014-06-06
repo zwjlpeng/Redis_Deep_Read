@@ -28,9 +28,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+ * stdlib是C语言的标准库
+ */
 
 #include <stdlib.h>
+
+/*
+ * 包含声明的头文件 
+ */
+
 #include "adlist.h"
+
+ /*
+  * 包含redis自已的内存分配以及释放函数
+  */
+
 #include "zmalloc.h"
 
 /* Create a new list. The created list can be freed with

@@ -1,0 +1,25 @@
+ * Expiring algorithm should be adaptive, if there are a lot of keys with an expire set and many of this happen to be already expired it should be, proportionally, more aggressive.
+ * Add a command to inspect the currently selected DB index
+ * Consistent hashing implemented in all the client libraries having an user base
+ * SORT: Don't copy the list into a vector when BY argument is constant.
+ * SORT ... STORE keyname. Instead to return the SORTed data set it into key.
+ * Profiling and optimization in order to limit the CPU usage at minimum
+ * Write the hash table size of every db in the dump, so that Redis can resize the hash table just one time when loading a big DB.
+ * Elapsed time in logs for SAVE when saving is going to take more than 2 seconds
+ * LOCK / TRYLOCK / UNLOCK as described many times in the google group
+ * Replication automated tests
+ * some kind of sorted type, example:
+        ZADD mykey foo 100
+        ZADD mykey bar 50
+   ZRANGE mykey 0 1 => bar foo
+   This is able to take elements sorted because a binary tree is used to store
+   the elements by 'score', with the actual value being the key. On the other
+   side the type also takes an hash table with key->score mapping, so that when
+   there is an update we lookup the current score and can traverse the tree.
+ * BITMAP / BYTEARRAY type?
+ * LRANGE 4 0 should return the same elements as LRANGE 0 4 but in reverse order (only if we get enough motivated requests about it)
+ * zmalloc() should avoid to add a private header for archs where there is some other kind of libc-specific way to get the size of a malloced block.
+
+FUTURE HINTS
+
+- In memory compression: if in-memory values compression will be implemented, make sure to implement this so that addReply() is able to handle compressed objects, just creating an uncompressed version on the fly and adding this to the output queue instead of the original one. When insetad we need to look at the object string value (SORT BY for example), call a function that will turn the object into an uncompresed one.

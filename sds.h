@@ -106,7 +106,7 @@ size_t sdslen(const sds s);
 sds sdsdup(const sds s);
 
 /*
- * 释放内存空间
+ * 释放字符串占用的内存空间
  */
 
 void sdsfree(sds s);
@@ -117,16 +117,63 @@ void sdsfree(sds s);
  */
 
 size_t sdsavail(sds s);
+
+/*
+ * 进行字符串的拼接
+ */
 sds sdscatlen(sds s, void *t, size_t len);
+
+/*
+ * 进行字符串的拼接
+ * 内部实际上调用的是sdscatlen函数
+ */
 sds sdscat(sds s, char *t);
+
+/*
+ *进行字符串的拷贝 
+ */
 sds sdscpylen(sds s, char *t, size_t len);
+
+/*
+ * 进行字符串的拷贝
+ * 实际上调用的是sdscpylen函数
+ */
 sds sdscpy(sds s, char *t);
+
+/*
+ * 可变参数的字符串拼接
+ */
+
 sds sdscatprintf(sds s, const char *fmt, ...);
+
+/*
+ * 去掉字符串两边指定的字符
+ */
 sds sdstrim(sds s, const char *cset);
+
+/*
+ * 获取指定范围的指符串
+ */
 sds sdsrange(sds s, long start, long end);
+
+/*
+ * 更新sdshdr中的len字段以及free字段
+ * 实际上调用的是strlen函数
+ * 然后做相应的加减法
+ */
 void sdsupdatelen(sds s);
+
+/*
+ * 对两个字符串进行比较
+ * 实际上调用的是C语言中的memcpy函数
+ */
 int sdscmp(sds s1, sds s2);
 sds *sdssplitlen(char *s, int len, char *sep, int seplen, int *count);
+
+/*
+ * 将字符串全部转为小写小符
+ * 实际上调用的是C语言中的tolower函数
+ */
 void sdstolower(sds s);
 
 #endif

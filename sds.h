@@ -28,12 +28,37 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+ * 字符串操作的相关库文件
+ */
+
 #ifndef __SDS_H
 #define __SDS_H
 
+//系统头文件，与类型定义相关
 #include <sys/types.h>
 
+/*
+ * sds实际上就是一个char *指针
+ * 你就把它当做char*就行了
+ * sds(simple dynamic string)
+ */
+
 typedef char *sds;
+
+/*
+ * redis中字符串操作最重要的一个结构
+ * 此结构中存放着字符串，以及字符器的长度
+ * buf用来存放字符串
+ * len表示字符串的实际长度
+ * free表示空间中还有多少空余空间能够使用
+ */
+
+/*
+ * 最后重点提醒一下，sdshdr这个结构体
+ * 实际占用的内存空间为8字节
+ * buf占用的内存为0字节
+ */
 
 struct sdshdr {
     long len;
@@ -41,12 +66,56 @@ struct sdshdr {
     char buf[];
 };
 
+/*
+ * 开设空间，空间大小为sizeof(sdshdr)+initlen+1
+ * 将init所指向的字符串copy到开设空间buf处
+ * 失败时返回NULL
+ * 成功时返回sdshdr->buf的地址
+ */
+
 sds sdsnewlen(const void *init, size_t initlen);
+
+/*
+ * sdsnew与sdsnew类似
+ * sdsnew中initlen为strlen(init)
+ * 也是进行字符串的复制
+ */
+
 sds sdsnew(const char *init);
+
+/*
+ * 创建空字符串
+ * 其实只分配了1字节
+ * 即创建空字符串时的内存情况为
+ * sizeof(int)+sizeof(int)+1
+ */
+
 sds sdsempty();
+
+/*
+ * 获取字符串实际占用的内存空间数量
+ */
+
 size_t sdslen(const sds s);
+
+/*
+ * 字符中复制函数
+ * 与zstrdup还是有区别滴
+ */
+
 sds sdsdup(const sds s);
+
+/*
+ * 释放内存空间
+ */
+
 void sdsfree(sds s);
+
+/*
+ * 返回字符串空间中余下未使用的空间
+ * 实际上就是返回sdshdr中free变量的值
+ */
+
 size_t sdsavail(sds s);
 sds sdscatlen(sds s, void *t, size_t len);
 sds sdscat(sds s, char *t);

@@ -28,13 +28,51 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+ * redis通过自已的方式来部署与管理内存
+ * redis下层采用的是C语言来编写的，因此
+ * redis提供的内存分配其实也就是对C语言中
+ * 基本的内存分配函数如malloc/free/calloc/realloc
+ * 的封装
+ */
+
 #ifndef _ZMALLOC_H
 #define _ZMALLOC_H
 
+/*
+ * 此函数用于分配指定大小的内存空间
+ * 若分配失败的话则返回NULL
+ * 分配成功的话，返回空间的首地址
+ */
+
 void *zmalloc(size_t size);
+
+/*
+ * 此函数用于重新分配内存空间，若ptr指向地址
+ * 处有size个空间的话，则ptr不变
+ * 若不足size个空间的话，会重新分配内存空间
+ * 返回新空间的首地址，将将原有数据拷贝到新
+ * 空间，同时释放旧空间
+ */
+
 void *zrealloc(void *ptr, size_t size);
+
+/*
+ * 用于释放ptr指向的内存空间
+ */
+
 void zfree(void *ptr);
+
+/*
+ * 用于字符串的拷贝
+ */
+
 char *zstrdup(const char *s);
+
+/*
+ * 获取实际分配的内存空间大小
+ */
+
 size_t zmalloc_used_memory(void);
 
 #endif /* _ZMALLOC_H */

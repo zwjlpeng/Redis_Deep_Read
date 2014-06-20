@@ -373,32 +373,47 @@ int dictDeleteNoFree(dict *ht, const void *key) {
 int _dictClear(dict *ht)
 {
     unsigned long i;
-
     /* Free all the elements */
+    /**
+     * 将所有的元素进行释放 
+     */
     for (i = 0; i < ht->size && ht->used > 0; i++) {
         dictEntry *he, *nextHe;
-
+        //表标桶状结构中没有链表元素
         if ((he = ht->table[i]) == NULL) continue;
+        //循环进行遍历
         while(he) {
             nextHe = he->next;
+            //释放键
             dictFreeEntryKey(ht, he);
+            //释放值 
             dictFreeEntryVal(ht, he);
+            //释放结构体
             _dictFree(he);
+            //记录数作相应的减法
             ht->used--;
             he = nextHe;
         }
     }
     /* Free the table and the allocated cache structure */
+    //释放整个Hash表
     _dictFree(ht->table);
     /* Re-initialize the table */
+    //重新初始化整个Hash表，Hash结构还是要保留的
     _dictReset(ht);
     return DICT_OK; /* never fails */
 }
 
 /* Clear & Release the hash table */
+/**
+ * 释放Hash表
+ * 整个Hash表连同Hash结构都将释放 
+ */
 void dictRelease(dict *ht)
 {
+    //清除Hash表中的数据
     _dictClear(ht);
+    //对空间进行释放 
     _dictFree(ht);
 }
 
@@ -421,10 +436,14 @@ dictEntry *dictFind(dict *ht, const void *key)
     return NULL;
 }
 
+/** 
+ * 获取Hash表中的相应的迭代器
+ */
 dictIterator *dictGetIterator(dict *ht)
 {
+    //给迭代器分配内存空间
     dictIterator *iter = _dictAlloc(sizeof(*iter));
-
+    //对迭代器进行相应的初始化
     iter->ht = ht;
     iter->index = -1;
     iter->entry = NULL;
@@ -432,27 +451,38 @@ dictIterator *dictGetIterator(dict *ht)
     return iter;
 }
 
+/**
+ * 对Hashtable进行迭代遍历操作
+ */
 dictEntry *dictNext(dictIterator *iter)
 {
     while (1) {
         if (iter->entry == NULL) {
             iter->index++;
+            //如果遍历的index大于整个Hashtable数组的大小时
+            //说明已经遍历完成，直接跳出
             if (iter->index >=
                     (signed)iter->ht->size) break;
             iter->entry = iter->ht->table[iter->index];
         } else {
+            //遍历到下一个元素
             iter->entry = iter->nextEntry;
         }
         if (iter->entry) {
             /* We need to save the 'next' here, the iterator user
              * may delete the entry we are returning. */
+            //返回遍历过程中的下一个元素
             iter->nextEntry = iter->entry->next;
+            //返回当前遍历的元素
             return iter->entry;
         }
     }
     return NULL;
 }
 
+/**
+ * 释放迭代器把指向的空间
+ */
 void dictReleaseIterator(dictIterator *iter)
 {
     _dictFree(iter);
@@ -460,13 +490,18 @@ void dictReleaseIterator(dictIterator *iter)
 
 /* Return a random entry from the hash table. Useful to
  * implement randomized algorithms */
+/**
+ * 从Hashtable中获取随机的key
+ */
 dictEntry *dictGetRandomKey(dict *ht)
 {
     dictEntry *he;
     unsigned int h;
     int listlen, listele;
-
+    //如果整个HashTable中压根没有记录时
+    //直接返回NULL
     if (ht->used == 0) return NULL;
+    //否则随机选择一个HashTable里面的slot
     do {
         h = random() & ht->sizemask;
         he = ht->table[h];
@@ -476,13 +511,16 @@ dictEntry *dictGetRandomKey(dict *ht)
      * list and we need to get a random element from the list.
      * The only sane way to do so is to count the element and
      * select a random index. */
+    //计算出处于这个slot里面的元素数目
     listlen = 0;
     while(he) {
         he = he->next;
         listlen++;
     }
+    //从整个slot链表中选择元素的位置
     listele = random() % listlen;
     he = ht->table[h];
+    //指针指向该链表的位置 
     while(listele--) he = he->next;
     return he;
 }
@@ -501,7 +539,7 @@ static int _dictExpandIfNeeded(dict *ht)
     if (ht->size == 0)
         return dictExpand(ht, DICT_HT_INITIAL_SIZE);
     //如果hash表里数据记录数已经与hashtable的大小相同的话，则将大小扩充为2倍
-    if (ht->used == ht->size)
+    if (ht->used == ht->size)//里面的记录数已经达到了hashtable的大小时，则需要进行扩充空间
         return dictExpand(ht, ht->size*2);
     return DICT_OK;
 }
@@ -557,49 +595,74 @@ static int _dictKeyIndex(dict *ht, const void *key)
     return h;
 }
 
+/**
+ * 清空HashTable
+ * 清空后HashTable进行了重新的初始化
+ */
 void dictEmpty(dict *ht) {
     _dictClear(ht);
 }
 
+/**
+ * 打印出HashTable表中数据的当前状态
+ * maxchainlen最大链表的长度
+ * chainlen
+ * slot表示Hashtable中已使用的桶数
+ */
 #define DICT_STATS_VECTLEN 50
 void dictPrintStats(dict *ht) {
     unsigned long i, slots = 0, chainlen, maxchainlen = 0;
     unsigned long totchainlen = 0;
     unsigned long clvector[DICT_STATS_VECTLEN];
 
+    //如果Hashtable中为0记录数，则打印出空Hashtable
     if (ht->used == 0) {
         printf("No stats available for empty dictionaries\n");
         return;
     }
-
+    //对clvector数组进行相应的初始化
     for (i = 0; i < DICT_STATS_VECTLEN; i++) clvector[i] = 0;
     for (i = 0; i < ht->size; i++) {
         dictEntry *he;
 
         if (ht->table[i] == NULL) {
+            //从这里可以看出clvector[0]记录Hashtable中的空槽数
             clvector[0]++;
             continue;
         }
+        //否则的知槽数++
         slots++;
         /* For each hash entry on this slot... */
         chainlen = 0;
         he = ht->table[i];
+        //算出槽中的链表长度
         while(he) {
             chainlen++;
             he = he->next;
         }
+        //如果小于50的话，则clvector相应的记录增加
+        //例如clvector[2]=10,表示Hashtable中槽里面链表长度为2的有10个
+        //超过50的全部放在clvector[49]里面
         clvector[(chainlen < DICT_STATS_VECTLEN) ? chainlen : (DICT_STATS_VECTLEN-1)]++;
         if (chainlen > maxchainlen) maxchainlen = chainlen;
         totchainlen += chainlen;
     }
+    //将状态信息打印出来
     printf("Hash table stats:\n");
+    //hashtable的大小
     printf(" table size: %ld\n", ht->size);
+    //hashtable中存在的记录数
     printf(" number of elements: %ld\n", ht->used);
+    //hashtalbe中已使用的槽数
     printf(" different slots: %ld\n", slots);
+    //hashtable中最大键的长度
     printf(" max chain length: %ld\n", maxchainlen);
+    //hashtable中平均链表的长度
     printf(" avg chain length (counted): %.02f\n", (float)totchainlen/slots);
+    //和上一个值理论上来讲应该是一样的
     printf(" avg chain length (computed): %.02f\n", (float)ht->used/slots);
     printf(" Chain length distribution:\n");
+    //打印出链表中的各个槽里面的链表的长度记录
     for (i = 0; i < DICT_STATS_VECTLEN-1; i++) {
         if (clvector[i] == 0) continue;
         printf("   %s%ld: %ld (%.02f%%)\n",(i == DICT_STATS_VECTLEN-1)?">= ":"", i, clvector[i], ((float)clvector[i]/ht->size)*100);
@@ -608,33 +671,51 @@ void dictPrintStats(dict *ht) {
 
 /* ----------------------- StringCopy Hash Table Type ------------------------*/
 
+/**
+ * Hash函数(字符串复制相关的Hash表函数)
+ */
 static unsigned int _dictStringCopyHTHashFunction(const void *key)
 {
     return dictGenHashFunction(key, strlen(key));
 }
-
+/**
+ * 键值复制相关的函数
+ */
 static void *_dictStringCopyHTKeyDup(void *privdata, const void *key)
 {
     int len = strlen(key);
     char *copy = _dictAlloc(len+1);
+    /**
+     * #define DICT_NOTUSED(V) ((void) V);
+     */
     DICT_NOTUSED(privdata);
-
+    //进行键值的复制操作
     memcpy(copy, key, len);
+    //在字符串未尾加了\0标识字符串的结束
     copy[len] = '\0';
     return copy;
 }
-
+ 
+/**
+ * HashTable中值复制操作
+ */
 static void *_dictStringKeyValCopyHTValDup(void *privdata, const void *val)
-{
+{  
+    //获取值的长度
     int len = strlen(val);
+    //分配内存空间
     char *copy = _dictAlloc(len+1);
     DICT_NOTUSED(privdata);
-
+    //进行内存复制的操作
     memcpy(copy, val, len);
     copy[len] = '\0';
     return copy;
 }
 
+/**
+ * 键值的比较函数
+ * 比较key1与key2的值是否相等
+ */
 static int _dictStringCopyHTKeyCompare(void *privdata, const void *key1,
         const void *key2)
 {
@@ -643,20 +724,29 @@ static int _dictStringCopyHTKeyCompare(void *privdata, const void *key1,
     return strcmp(key1, key2) == 0;
 }
 
+/**
+ * HashTable的析构函数
+ */
 static void _dictStringCopyHTKeyDestructor(void *privdata, void *key)
 {
     DICT_NOTUSED(privdata);
-
+    //释放key所占用的内存空间
     _dictFree((void*)key); /* ATTENTION: const cast */
 }
 
+/**
+ * HashTable中释放值
+ */
 static void _dictStringKeyValCopyHTValDestructor(void *privdata, void *val)
 {
     DICT_NOTUSED(privdata);
-
+    //释放值所占用的内存空间
     _dictFree((void*)val); /* ATTENTION: const cast */
 }
 
+/**
+ * Redis提供的三种自定义的Hash的Type函数类型 
+ */
 dictType dictTypeHeapStringCopyKey = {
     _dictStringCopyHTHashFunction,        /* hash function */
     _dictStringCopyHTKeyDup,              /* key dup */
@@ -672,7 +762,9 @@ dictType dictTypeHeapStrings = {
     _dictStringCopyHTHashFunction,        /* hash function */
     NULL,                               /* key dup */
     NULL,                               /* val dup */
+    //关键字的比较
     _dictStringCopyHTKeyCompare,          /* key compare */
+    //关键字的释放 
     _dictStringCopyHTKeyDestructor,       /* key destructor */
     NULL                                /* val destructor */
 };

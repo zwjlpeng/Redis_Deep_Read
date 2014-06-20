@@ -47,10 +47,13 @@
 
 /* ---------------------------- Utility funcitons --------------------------- */
 
+/**
+ * 打印出系统的崩溃信息
+ * C语言中的可变参数的使用va_start va_end
+ */
 static void _dictPanic(const char *fmt, ...)
 {
     va_list ap;
-
     va_start(ap, fmt);
     fprintf(stderr, "\nDICT LIBRARY PANIC: ");
     vfprintf(stderr, fmt, ap);
@@ -59,7 +62,9 @@ static void _dictPanic(const char *fmt, ...)
 }
 
 /* ------------------------- Heap Management Wrappers------------------------ */
-
+/** 
+ *  堆分配函数
+ */
 static void *_dictAlloc(size_t size)
 {
     void *p = zmalloc(size);
@@ -68,6 +73,9 @@ static void *_dictAlloc(size_t size)
     return p;
 }
 
+/**
+ * 堆释放函数
+ */
 static void _dictFree(void *ptr) {
     zfree(ptr);
 }
@@ -82,6 +90,9 @@ static int _dictInit(dict *ht, dictType *type, void *privDataPtr);
 /* -------------------------- hash functions -------------------------------- */
 
 /* Thomas Wang's 32 bit Mix Function */
+/**
+ * 求Hash的键值，可以促使均匀分布
+ */
 unsigned int dictIntHashFunction(unsigned int key)
 {
     key += ~(key << 15);
@@ -93,6 +104,9 @@ unsigned int dictIntHashFunction(unsigned int key)
     return key;
 }
 
+/**
+ * 直接将整数key作为Hash的键值
+ */
 /* Identity hash function for integer keys */
 unsigned int dictIdentityHashFunction(unsigned int key)
 {
@@ -101,6 +115,7 @@ unsigned int dictIdentityHashFunction(unsigned int key)
 
 /* Generic hash function (a popular one from Bernstein).
  * I tested a few and this was the best. */
+//Hash函数(通用目的Hash函数)
 unsigned int dictGenHashFunction(const unsigned char *buf, int len) {
     unsigned int hash = 5381;
 
@@ -113,6 +128,10 @@ unsigned int dictGenHashFunction(const unsigned char *buf, int len) {
 
 /* Reset an hashtable already initialized with ht_init().
  * NOTE: This function should only called by ht_destroy(). */
+/**
+ * 重设Hash表
+ * 各种值都设置为0
+ */
 static void _dictReset(dict *ht)
 {
     ht->table = NULL;
@@ -121,6 +140,10 @@ static void _dictReset(dict *ht)
     ht->used = 0;
 }
 
+/**
+ * 创建一个新的Hash表
+ * type为可用于Hash表上面的相应函数
+ */
 /* Create a new hash table */
 dict *dictCreate(dictType *type,
         void *privDataPtr)
@@ -132,17 +155,29 @@ dict *dictCreate(dictType *type,
 }
 
 /* Initialize the hash table */
+/**
+ * 初始化Hash表
+ */
 int _dictInit(dict *ht, dictType *type,
         void *privDataPtr)
 {
+    //对Hash表进行初始化
     _dictReset(ht);
+    //初始化能够作用于Hash中的相应函数集
     ht->type = type;
+    //初始化hashtable的私有数据段
     ht->privdata = privDataPtr;
+    //返回初始化成功
     return DICT_OK;
 }
 
 /* Resize the table to the minimal size that contains all the elements,
  * but with the invariant of a USER/BUCKETS ration near to <= 1 */
+/**
+ * DICT_HT_INITIAL_SIZE=4表示的是Hash表的初始大小
+ * 重新调整Hash表的大小
+ * 从这里可以看出Hash表的最小的大注为4
+ */
 int dictResize(dict *ht)
 {
     int minimal = ht->used;
@@ -153,41 +188,51 @@ int dictResize(dict *ht)
 }
 
 /* Expand or create the hashtable */
+/**
+ * 创建Hash表，Hash表的大小为size
+ */
 int dictExpand(dict *ht, unsigned long size)
 {
     dict n; /* the new hashtable */
-    unsigned long realsize = _dictNextPower(size), i;
+    //重设Hash表的大小，大小为2的指数
+    unsigned long realsize = _dictNextPower(size);
 
     /* the size is invalid if it is smaller than the number of
      * elements already inside the hashtable */
+    //如果大小比当原Hash表中记录数目还要小的话，则出错
     if (ht->used > size)
         return DICT_ERR;
-
+    //初始化
     _dictInit(&n, ht->type, ht->privdata);
     n.size = realsize;
+    //保证为素数
     n.sizemask = realsize-1;
     n.table = _dictAlloc(realsize*sizeof(dictEntry*));
-
     /* Initialize all the pointers to NULL */
+    //将所有的指针初始为空
     memset(n.table, 0, realsize*sizeof(dictEntry*));
 
     /* Copy all the elements from the old to the new table:
      * note that if the old hash table is empty ht->size is zero,
      * so dictExpand just creates an hash table. */
+     //使用的内存记录数
     n.used = ht->used;
     for (i = 0; i < ht->size && ht->used > 0; i++) {
         dictEntry *he, *nextHe;
 
         if (ht->table[i] == NULL) continue;
-        
+        //采用的是桶状链表形式
         /* For each hash entry on this slot... */
         he = ht->table[i];
+        //在遍历的过程中对每一个元素又求取出在新Hash表中相应的位置 
         while(he) {
             unsigned int h;
-
             nextHe = he->next;
             /* Get the new element index */
+            //dictHashKey(ht,he->key)获取相应的键值key,实际上就是取模运算
+            //求取在新hash表中的元素的位置
             h = dictHashKey(ht, he->key) & n.sizemask;
+            //采用的是头插入法进行的插入
             he->next = n.table[h];
             n.table[h] = he;
             ht->used--;
@@ -195,15 +240,23 @@ int dictExpand(dict *ht, unsigned long size)
             he = nextHe;
         }
     }
+    //断言原Hash表中已经没有记录了
     assert(ht->used == 0);
+    //将原Hash表进行释放 
     _dictFree(ht->table);
-
+ 
     /* Remap the new hashtable in the old */
+    //将新Hash表作为值进行赋值
     *ht = n;
+    //返回创建成功
     return DICT_OK;
 }
 
 /* Add an element to the target hash table */
+/**
+ * 向Hash表中增加元素
+ * 增加元素的键为key,值为vals
+ */
 int dictAdd(dict *ht, void *key, void *val)
 {
     int index;
@@ -215,18 +268,25 @@ int dictAdd(dict *ht, void *key, void *val)
         return DICT_ERR;
 
     /* Allocates the memory and stores key */
+    //分配内存空间
     entry = _dictAlloc(sizeof(*entry));
+    //将其放入相应的slot里面
+    //采用的是头插入法进行插入
     entry->next = ht->table[index];
     ht->table[index] = entry;
 
     /* Set the hash entry fields. */
     dictSetHashKey(ht, entry, key);
     dictSetHashVal(ht, entry, val);
+    //使用的记录数进行+1操作
     ht->used++;
+    //返回OK标记
     return DICT_OK;
 }
 
 /* Add an element, discarding the old if the key already exists */
+//向hash表中增加一个元素，如果Hash表中已经有该元素的话
+//则将该元素进行替换掉
 int dictReplace(dict *ht, void *key, void *val)
 {
     dictEntry *entry;
@@ -236,13 +296,21 @@ int dictReplace(dict *ht, void *key, void *val)
     if (dictAdd(ht, key, val) == DICT_OK)
         return DICT_OK;
     /* It already exists, get the entry */
+    //如果已经存在的话，则获取相应的位置 
     entry = dictFind(ht, key);
     /* Free the old value and set the new one */
+    //将原Hash表中该entry的值进行释放
+    //避免内存泄露
     dictFreeEntryVal(ht, entry);
+    //给该节点设置新值
     dictSetHashVal(ht, entry, val);
+    //返回成功标记
     return DICT_OK;
 }
 
+/**
+ * 从Hash表中删除指定的key
+ */
 /* Search and remove an element */
 static int dictGenericDelete(dict *ht, const void *key, int nofree)
 {
@@ -251,6 +319,9 @@ static int dictGenericDelete(dict *ht, const void *key, int nofree)
 
     if (ht->size == 0)
         return DICT_ERR;
+    /**
+     *  返回key对应的dictEntry
+     */
     h = dictHashKey(ht, key) & ht->sizemask;
     he = ht->table[h];
 
@@ -263,28 +334,42 @@ static int dictGenericDelete(dict *ht, const void *key, int nofree)
             else
                 ht->table[h] = he->next;
             if (!nofree) {
+                //如果需要释放的情况下，则进行相应的释放操作
                 dictFreeEntryKey(ht, he);
                 dictFreeEntryVal(ht, he);
             }
             _dictFree(he);
+            //记录数相应的进行减小
             ht->used--;
             return DICT_OK;
         }
+        //进行相应的赋值操作
         prevHe = he;
         he = he->next;
     }
+    //返回错误
     return DICT_ERR; /* not found */
 }
 
+/**
+ * 释放指定的键值
+ */
 int dictDelete(dict *ht, const void *key) {
     return dictGenericDelete(ht,key,0);
 }
 
+/**
+ * 从Hash表中删除key对应的记录，但是不
+ * 删除相应的key以及value
+ */
 int dictDeleteNoFree(dict *ht, const void *key) {
     return dictGenericDelete(ht,key,1);
 }
 
 /* Destroy an entire hash table */
+/**
+ * 释放整个Hash表
+ */
 int _dictClear(dict *ht)
 {
     unsigned long i;
@@ -317,11 +402,14 @@ void dictRelease(dict *ht)
     _dictFree(ht);
 }
 
+/**
+ *  从HashTable中查找key的相应的dictEntry
+ */
 dictEntry *dictFind(dict *ht, const void *key)
 {
     dictEntry *he;
     unsigned int h;
-
+    //如果Hash表的大小为0,则直接返回NULL
     if (ht->size == 0) return NULL;
     h = dictHashKey(ht, key) & ht->sizemask;
     he = ht->table[h];
@@ -402,22 +490,31 @@ dictEntry *dictGetRandomKey(dict *ht)
 /* ------------------------- private functions ------------------------------ */
 
 /* Expand the hash table if needed */
+/**
+ * 判断Hash表的大小是否需要扩充
+ */
 static int _dictExpandIfNeeded(dict *ht)
 {
     /* If the hash table is empty expand it to the intial size,
      * if the table is "full" dobule its size. */
+    //如果目前的hashtable的大小为0，则将大小设置为4
     if (ht->size == 0)
         return dictExpand(ht, DICT_HT_INITIAL_SIZE);
+    //如果hash表里数据记录数已经与hashtable的大小相同的话，则将大小扩充为2倍
     if (ht->used == ht->size)
         return dictExpand(ht, ht->size*2);
     return DICT_OK;
 }
 
 /* Our hash table capability is a power of two */
+/**
+ * Hash表的大小为2的指数幂
+ */
 static unsigned long _dictNextPower(unsigned long size)
 {
+    //将i设置为hash表的初始大小即为4
     unsigned long i = DICT_HT_INITIAL_SIZE;
-
+    //返回2的指数幂中与size大小最接近且比size大小的值
     if (size >= LONG_MAX) return LONG_MAX;
     while(1) {
         if (i >= size)
@@ -429,23 +526,34 @@ static unsigned long _dictNextPower(unsigned long size)
 /* Returns the index of a free slot that can be populated with
  * an hash entry for the given 'key'.
  * If the key already exists, -1 is returned. */
+/**
+ * 返回key在hash表的位置，如果key在Hash表里已经存在，
+ * 则返回-1
+ */
 static int _dictKeyIndex(dict *ht, const void *key)
 {
     unsigned int h;
     dictEntry *he;
-
+    /**
+     * 判断是否需要扩充Hash表
+     */
     /* Expand the hashtable if needed */
     if (_dictExpandIfNeeded(ht) == DICT_ERR)
         return -1;
     /* Compute the key hash value */
+    /**
+     * 获取Hash表中key对应元素位置【即Hash表中的位置】 
+     */
     h = dictHashKey(ht, key) & ht->sizemask;
     /* Search if this slot does not already contain the given key */
     he = ht->table[h];
     while(he) {
+        //如果已经存在了话，即键值相等的话
         if (dictCompareHashKeys(ht, key, he->key))
             return -1;
         he = he->next;
     }
+    //否则的话，就返回相应的slot位置 
     return h;
 }
 

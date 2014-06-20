@@ -47,6 +47,11 @@
 /**
  * 事件循环结构体
  */
+ /**
+  * redis 1.0里面只使用了select函数，
+  * 即使用操作系统提供的异步操作
+  * 定时器是在文件事件之后进行处理
+  */
 struct aeEventLoop;
 
 /* Types and data structures */

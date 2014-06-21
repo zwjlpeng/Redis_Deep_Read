@@ -433,11 +433,16 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
 /* Wait for millseconds until the given file descriptor becomes
  * writable/readable/exception */
 //等待
+/**
+ * redis里提供的同步事件处理API
+ */
 int aeWait(int fd, int mask, long long milliseconds) {
     struct timeval tv;
     fd_set rfds, wfds, efds;
     int retmask = 0, retval;
-
+    /**
+     * tv中存放的是要等待的是时间
+     */
     tv.tv_sec = milliseconds/1000;
     tv.tv_usec = (milliseconds%1000)*1000;
     FD_ZERO(&rfds);
@@ -451,6 +456,7 @@ int aeWait(int fd, int mask, long long milliseconds) {
         if (FD_ISSET(fd,&rfds)) retmask |= AE_READABLE;
         if (FD_ISSET(fd,&wfds)) retmask |= AE_WRITABLE;
         if (FD_ISSET(fd,&efds)) retmask |= AE_EXCEPTION;
+        //返回哪一个文件描述符现在可以使用
         return retmask;
     } else {
         return retval;

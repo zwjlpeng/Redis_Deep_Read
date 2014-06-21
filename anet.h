@@ -28,22 +28,56 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * redis里的套接字相关的操作
+ */
 #ifndef ANET_H
 #define ANET_H
 
 #define ANET_OK 0
 #define ANET_ERR -1
 #define ANET_ERR_LEN 256
-
+/**
+ * 用于建立非阻塞型的网络套接字连接
+ */
 int anetTcpConnect(char *err, char *addr, int port);
+/**
+ * 用于建立阻塞型的网络套接字连接
+ */
 int anetTcpNonBlockConnect(char *err, char *addr, int port);
+/**
+ * 用于套接字的读
+ */
 int anetRead(int fd, char *buf, int count);
+/**
+ * 用于套接字的写
+ */
 int anetResolve(char *err, char *host, char *ipbuf);
+/**
+ * 建立网络套接字服务器方法
+ * 是对bind()/socket()/listen等一系列操作的封装
+ * 返回套接字的fd
+ */
 int anetTcpServer(char *err, int port, char *bindaddr);
+/**
+ * 用于接收连接
+ */
 int anetAccept(char *err, int serversock, char *ip, int *port);
+/**
+ * 用于套接字的写功能
+ */
 int anetWrite(int fd, char *buf, int count);
+/**
+ * 将fd设置为非阻塞型
+ */
 int anetNonBlock(char *err, int fd);
+/**
+ * 将TCP设为非延迟的，即屏蔽Nagle算法
+ */
 int anetTcpNoDelay(char *err, int fd);
+/**
+ * 开启连机监测，避免对方塔机，网络中断是fd无限期的等待
+ */
 int anetTcpKeepAlive(char *err, int fd);
 
 #endif

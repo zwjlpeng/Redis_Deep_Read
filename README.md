@@ -1,16 +1,6 @@
 Redis 源码注释
 ======================
 
-<a href="http://www.cnblogs.com/WJ5888/category/669887.html" target="_blank">
-Redis源码注解个人博客
-</a>
-
-作者：Code研究者
-
-目前就职:网易研发开发工程师
-
-Email:194312815@qq.com
-
 1.<a href="http://www.cnblogs.com/WJ5888/p/4371647.html" target="_blank">Redis内存回收:LRU算法</a>
 
 Redis中采用两种算法进行内存回收，引用计数算法以及LRU算法，在操作系统内存管理一节中，我们都学习过LRU算法(最近最久未使用算法),那么什么是LRU算法呢,LRU算法作为内存管理的一种有效算法,其含义是在内存有限的情况下，当内存容量不足时，为了保证程序的运行，这时就不得不淘汰内存中的一些对象，释放这些对象占用的空间，那么选择淘汰哪些对象呢...
